@@ -27,8 +27,9 @@
 //#define LED_TEST          // will just loop LED on pins 52 (ground), 53 (+)
 //#define EC_TEST             // will test EC on pins A0 (probe), 7 (EC Power)
 //#define TONE_TEST         // go through each, test the tones (maybe add a button for this...)
-#define CHANNEL_TEST      // will test LEDS, speakers and EC for each channel, progressively
+//#define CHANNEL_TEST      // will test LEDS, speakers and EC for each channel, progressively
 //#define NO_TONE
+#define SERIAL_DEBUG
 
 #define RANDOM_CHANCE (10)    // out of 1000
 
@@ -51,15 +52,19 @@ const int startPowerPin = 6;            // these will be numbered 6, 5, 4, 3, 2,
 const int startECPin = A0;              // these will be numbered A0, A1, A3
 
 const int ecValueNoPlayThreshhold = 950;    // value under which we will not play a tone
- //#define ECPin (A0)    
-
-boolean isOn[numChannels];
 
 
+boolean isPlaying;
 
-unsigned int rawEC[numChannels];
+int currentChannel;
+int currentToneValue;
+int currentLEDPin;
 
-MSTimer toneTimer[numChannels];
+const long toneTimerMinValue = 500;
+const long toneTimerMaxValue = 3000;
+
+
+MSTimer toneTimer;
 const int defaultToneTime = 1000;
 
 
@@ -81,15 +86,20 @@ Adafruit_7segment matrix = Adafruit_7segment();
 
 void setup(void)
 {
-  Serial.begin(115200);
-Serial.println("---------- Sonaqua Installation Player ----------" );
-  Serial.println("---------- by Scott Kildall ----------" );
-
+  isPlaying = false;
+  currentChannel = 0;
   
- for( int i = 0; i < numChannels; i++ ) {
-  tonePlayer[i].begin(startSpeakerPositivePin + (i*2) );
-  isOn[i] = false;
- }
+#ifdef SERIAL_DEBUG
+  Serial.begin(115200);
+  Serial.println("---------- Sonaqua Installation Player ----------" );
+  Serial.println("---------- by Scott Kildall ----------" );
+#endif
+
+
+  //-- initialize tone players
+  for( int i = 0; i < numChannels; i++ ) {
+    tonePlayer[i].begin(startSpeakerPositivePin + (i*2) );
+  }
 
   lineOut.begin(lineOutPositivePin);
 
@@ -103,11 +113,10 @@ Serial.println("---------- Sonaqua Installation Player ----------" );
 
 
   // Initialize times
-  for( int i = 0; i < numChannels; i++ ) 
-    toneTimer[i].setTimer(defaultToneTime);
+  toneTimer.setTimer(defaultToneTime);
 
     
-    randomSeed(analogRead(A15));
+  randomSeed(analogRead(A15));
 
     
   matrix.begin(0x70);
@@ -191,76 +200,63 @@ void loop(void)
   return;
 #endif
 
-
-
-
-
-      
-  for( int i = 0; i < numChannels; i++ ) {
-    //rawEC[i] = getEC(i); 
-    /*Serial.print("EC [");
+  //-- check if timer is playing
+  if( isPlaying ) {
+    if( toneTimer.isExpired() ) {
+       #ifdef SERIAL_DEBUG
+        Serial.println("--------------------------");
+        Serial.println("-> Stopping Sound <- " );
+        Serial.print("Channel Num = " );
+        Serial.println(currentChannel);
+      #endif
     
-    Serial.print(i);
-    Serial.print("] = " );
-    Serial.println(rawEC[i]);
-*/
-    if( isOn[i] == false ) {
-      if( random(1000) < RANDOM_CHANCE ) {
-       isOn[i] = true;
-        toneTimer[i].start();
-        toneTimer[i].setTimer(random(500,4000));
-       }
+      tonePlayer[currentChannel].stop();
+      digitalWrite(currentLEDPin,LOW);
+      isPlaying = false;
     }
+
+    // exit loop()
+    return;
   }
+
+  //-- at this point, there is no tone playing
+  if( random(1000) < RANDOM_CHANCE ) {
+
+    currentChannel = random(0, (numChannels + 1) );
+
+    #ifdef SERIAL_DEBUG
+      Serial.println("--------------------------");
+      Serial.println("-> Playing Sound <- " );
+      Serial.print("Channel Num = " );
+      Serial.println(currentChannel);
+    #endif
     
+    int ecValue = getEC( getPowerPin(currentChannel), getECPin(currentChannel) );
 
-  int toneValue;
-/*
-  for( int i = 0; i < NUM_ACTIVE_CHANNELS; i++ ) {
-    if( rawEC[i] > 1000 ) {
-       tonePlayer[i].stop();
-    }
-    else {
-     //  toneValue = (rawEC[i]*2 - 700);
-     toneValue = (600*2 - 700);
-     
-        if( toneValue < 100 )
-          toneValue = 100;
+    #ifdef SERIAL_DEBUG
+      Serial.print("EC Value = " );
+      Serial.println(ecValue);
+    #endif
 
-        toneValue += random(10);
+    int toneValue = makeToneFromEC(ecValue);
 
-        if( isOn[i] ) {
-          if( toneTimer[i].isExpired() ) {
-              tonePlayer[i].stop();
-              isOn[i] = false;
-          }
-          else
-            tonePlayer[i].play(toneValue);
+    #ifndef NO_TONE
+      tonePlayer[currentChannel].play(toneValue);
+    #endif
+    
+    toneTimer.setTimer(random(toneTimerMinValue,toneTimerMaxValue));
+    toneTimer.start();
 
-             matrix.print(i+1, DEC);
-            matrix.writeDisplay();
-        }
-        //
-    }
+    isPlaying = true;
+
+    currentLEDPin = startLEDPositivePin + (currentChannel*2);
+    digitalWrite(currentLEDPin,HIGH);
   }
-*/
 
-  delay(150);
+
+  delay(50);
 }
 
-
-/*
-unsigned int getEC(int channelNum){
-  unsigned int raw;
- 
-  digitalWrite(startPowerPin + channelNum,HIGH);
-  raw= analogRead(startECPin + channelNum);
-  raw= analogRead(startECPin + channelNum);// This is not a mistake, First reading will be low beause if charged a capacitor
-  digitalWrite(channelNum + channelNum,LOW);
- 
- return raw;
-}
-*/
 
 //-- Sample EC using Analog pins, returns 0-1023
 //-- powerPin is a digital pin, probe pin is analog

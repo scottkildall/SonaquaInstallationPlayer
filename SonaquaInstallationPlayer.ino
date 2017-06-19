@@ -330,8 +330,11 @@ int makeToneFromEC(int ecValue) {
   if( ecValue > ecValueNoPlayThreshhold )
       return 0;
       
-  int toneValue = ecValue/4;
-
+  int toneValue = ecValue - 400;
+  
+  if( toneValue < 25 )
+    toneValue = 25;
+    
   return toneValue;
 }
 

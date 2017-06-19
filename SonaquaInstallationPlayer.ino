@@ -28,7 +28,7 @@
 //#define EC_TEST             // will test EC on pins A0 (probe), 7 (EC Power)
 //#define TONE_TEST         // go through each, test the tones (maybe add a button for this...)
 #define CHANNEL_TEST      // will test LEDS, speakers and EC for each channel, progressively
-#define NO_TONE
+//#define NO_TONE
 
 #define RANDOM_CHANCE (10)    // out of 1000
 
@@ -280,7 +280,7 @@ unsigned int getEC(int powerPin, int probePin){
 
 //-- go through each channel, show LEDs, display on backpack
 void channelTest() {
-   int delayTime = 2000;
+   int delayTime = 1000;
    
   // LED outputs
   for( int i = 0; i < numChannels; i++ ) {
@@ -295,10 +295,14 @@ void channelTest() {
     digitalWrite(startLEDPositivePin + (i*2), HIGH);
     delay(delayTime);
 
-    int toneValue = random(25,200);
+    int toneValue = makeToneFromEC(ecValue);
+    
     #ifndef NO_TONE
-      tonePlayer[i].play(toneValue);
-      lineOut.play(toneValue);
+        //-- zero tone means that we over threshhold
+       if( toneValue != 0 ) {
+        tonePlayer[i].play(toneValue);
+        lineOut.play(toneValue);
+       }
     #endif
      
     digitalWrite(startLEDPositivePin + (i*2), LOW);
@@ -323,10 +327,10 @@ int getECPin(int channelNum) {
 }
 
 int makeToneFromEC(int ecValue) {
-  if( ecValue < ecValueNoPlayThreshhold )
+  if( ecValue > ecValueNoPlayThreshhold )
       return 0;
       
-  int toneValue = ecValue/2;
+  int toneValue = ecValue/4;
 
   return toneValue;
 }

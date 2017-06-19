@@ -25,3 +25,9 @@ void MSTimer::setTimer(unsigned long _duration) {
 }
 
 
+long MSTimer::getTimeLeft() {
+   // add here
+  return 0;
+}
+
+

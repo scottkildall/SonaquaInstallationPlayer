@@ -214,6 +214,16 @@ void loop(void)
       digitalWrite(currentLEDPin,LOW);
       isPlaying = false;
     }
+    else {
+      
+      //currentToneValue += 6 - (random(7));
+     // if( random(100) < 10 );
+      // currentToneValue += 3 - (random(7));
+
+     // int randValue =  3 - (random(7));
+     // tonePlayer[currentChannel].play(currentToneValue + randValue);
+      tonePlayer[currentChannel].play(currentToneValue);
+    }
 
     // exit loop()
     return;
@@ -222,7 +232,7 @@ void loop(void)
   //-- at this point, there is no tone playing
   if( random(1000) < RANDOM_CHANCE ) {
 
-    currentChannel = random(0, (numChannels + 1) );
+    currentChannel = random(0, numChannels );
 
     #ifdef SERIAL_DEBUG
       Serial.println("--------------------------");
@@ -250,6 +260,7 @@ void loop(void)
     isPlaying = true;
 
     currentLEDPin = startLEDPositivePin + (currentChannel*2);
+    currentToneValue = toneValue;
     digitalWrite(currentLEDPin,HIGH);
   }
 

@@ -18,6 +18,7 @@ class MSTimer
     int isExpired();
     void setTimer( unsigned long _duration );  // will also start the time
     void start();
+    long getTimeLeft();
     
     unsigned long startTime;
     unsigned long duration;

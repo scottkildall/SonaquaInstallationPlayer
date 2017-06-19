@@ -16,7 +16,6 @@
  *  MSTimer code is my own, feel free to use/copy/modify
  *
  *
- *
  */
  
 #include "Tone.h"
@@ -31,7 +30,7 @@
 //#define NO_TONE
 #define SERIAL_DEBUG
 
-#define RANDOM_CHANCE (10)    // out of 1000
+#define RANDOM_CHANCE (4)    // out of 1000, this will be running 4 Arduinos, so essentally try 3 instead 
 
 // You can declare the tones as an array
 const int numChannels = 4;
@@ -215,14 +214,21 @@ void loop(void)
       isPlaying = false;
     }
     else {
-      
-      //currentToneValue += 6 - (random(7));
-     // if( random(100) < 10 );
-      // currentToneValue += 3 - (random(7));
+      // 1 in 1000 chance, better done through a timer, but this creates an interestng sound   
+      if( random(1000) < 1 ) {
 
-     // int randValue =  3 - (random(7));
-     // tonePlayer[currentChannel].play(currentToneValue + randValue);
-      tonePlayer[currentChannel].play(currentToneValue);
+        
+//        #ifdef SERIAL_DEBUG
+//          Serial.print("Randomizing: ");
+//          Serial.println(currentToneValue + randValue);
+//        #endif
+      
+        currentToneValue = makeToneFromEC(getEC( getPowerPin(currentChannel), getECPin(currentChannel) ));
+        tonePlayer[currentChannel].play(currentToneValue);
+        matrix.print(currentToneValue, DEC);
+        matrix.writeDisplay();
+      
+       }
     }
 
     // exit loop()
@@ -251,6 +257,9 @@ void loop(void)
     int toneValue = makeToneFromEC(ecValue);
 
     #ifndef NO_TONE
+      matrix.print(toneValue, DEC);
+      matrix.writeDisplay();
+    
       tonePlayer[currentChannel].play(toneValue);
     #endif
     
@@ -264,7 +273,7 @@ void loop(void)
     digitalWrite(currentLEDPin,HIGH);
   }
 
-
+  // 50 ms delay loop
   delay(50);
 }
 
@@ -332,6 +341,7 @@ int getECPin(int channelNum) {
     return A1;
   return (startECPin + channelNum);
 }
+
 
 int makeToneFromEC(int ecValue) {
   if( ecValue > ecValueNoPlayThreshhold )
